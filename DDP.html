@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Digital Diary with PIN Lock</title>
+  <style>body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(135deg, #74ebd5, #ACB6E5); /* soft gradient */
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.container {
+  max-width: 500px;
+  margin: auto;
+  padding: 25px;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+}
+
+h2 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+input, textarea, button {
+  margin: 10px;
+  padding: 10px;
+  width: 90%;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 15px;
+}
+
+input:focus, textarea:focus {
+  border-color: #3498db;
+  outline: none;
+  box-shadow: 0 0 6px rgba(52,152,219,0.5);
+}
+
+button {
+  background: #3498db;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+button:hover {
+  background: #2980b9;
+}
+
+#diarySection, #setPinSection, #forgotPinSection, #verifySection {
+  display: none;
+}
+
+#error {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+#history {
+  margin-top: 20px;
+  text-align: left;
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.05);
+}
+
+.entry {
+  border-bottom: 1px solid #ddd;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.entry b {
+  color: #16a085;
+}
+
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🔐 Digital Diary</h2>
+    
+    <!-- PIN Section -->
+    <div id="pinSection">
+      <input type="password" id="pinInput" placeholder="Enter PIN">
+      <button onclick="unlockDiary()">Unlock</button>
+      <button onclick="showSetPin()">Set PIN</button>
+      <button onclick="showForgotPin()">Forgot PIN</button>
+      <div id="error"></div>
+    </div>
+    
+    <!-- Set PIN Section -->
+    <div id="setPinSection">
+      <input type="email" id="setEmail" placeholder="Enter your email">
+      <button onclick="sendVerification('set')">Send Verification Code</button>
+      <button onclick="backToLogin()">Back</button>
+    </div>
+    
+    <!-- Forgot PIN Section -->
+    <div id="forgotPinSection">
+      <input type="email" id="forgotEmail" placeholder="Enter your email">
+      <button onclick="sendVerification('forgot')">Send Reset Code</button>
+      <button onclick="backToLogin()">Back</button>
+    </div>
+    
+    <!-- Verification Section -->
+    <div id="verifySection">
+      <input type="text" id="otpInput" placeholder="Enter OTP">
+      <input type="password" id="newPin" placeholder="Enter new PIN">
+      <button onclick="verifyCode()">Verify & Save PIN</button>
+    </div>
+    
+    <!-- Diary Section -->
+    <div id="diarySection">
+      <textarea id="diaryText" rows="5" placeholder="Write your thoughts..."></textarea>
+      <button onclick="saveDiary()">Save Entry</button>
+      <div id="history"></div>
+    </div>
+  </div>
+
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+  <script>
+    (function(){
+      emailjs.init("YOUR_PUBLIC_KEY"); // Replace with your EmailJS public key
+    })();
+
+    let correctPIN = localStorage.getItem("diaryPIN") || "1234";
+    let currentAction = ""; // 'set' or 'forgot'
+    let generatedCode = "";
+
+    function unlockDiary() {
+      let enteredPIN = document.getElementById("pinInput").value;
+      if (enteredPIN === correctPIN) {
+        document.getElementById("pinSection").style.display = "none";
+        document.getElementById("diarySection").style.display = "block";
+        document.getElementById("error").innerText = "";
+        loadHistory();
+      } else {
+        document.getElementById("error").innerText = "Incorrect PIN!";
+      }
+    }
+
+    function showSetPin() {
+      document.getElementById("pinSection").style.display = "none";
+      document.getElementById("setPinSection").style.display = "block";
+      currentAction = "set";
+    }
+
+    function showForgotPin() {
+      document.getElementById("pinSection").style.display = "none";
+      document.getElementById("forgotPinSection").style.display = "block";
+      currentAction = "forgot";
+    }
+
+    function sendVerification(action) {
+      let email = action === "set" ? document.getElementById("setEmail").value : document.getElementById("forgotEmail").value;
+      generatedCode = Math.floor(1000 + Math.random() * 9000); // 4-digit OTP
+
+      emailjs.send("YOUR_SERVICE_ID", "YOUR_TEMPLATE_ID", {
+        to_email: email,
+        message: "Your verification code is " + generatedCode
+      }).then(function(response) {
+        alert("Verification code sent to " + email);
+        document.getElementById("setPinSection").style.display = "none";
+        document.getElementById("forgotPinSection").style.display = "none";
+        document.getElementById("verifySection").style.display = "block";
+      }, function(error) {
+        alert("Failed to send email. Check setup.");
+      });
+    }
+
+    function verifyCode() {
+      let enteredCode = document.getElementById("otpInput").value;
+      let newPin = document.getElementById("newPin").value;
+      if (enteredCode == generatedCode && newPin) {
+        localStorage.setItem("diaryPIN", newPin);
+        correctPIN = newPin;
+        alert("PIN updated successfully!");
+        backToLogin();
+      } else {
+        alert("Incorrect OTP or missing PIN!");
+      }
+    }
+
+    function backToLogin() {
+      document.getElementById("setPinSection").style.display = "none";
+      document.getElementById("forgotPinSection").style.display = "none";
+      document.getElementById("verifySection").style.display = "none";
+      document.getElementById("pinSection").style.display = "block";
+    }
+
+    function saveDiary() {
+      let text = document.getElementById("diaryText").value;
+      if (text.trim() !== "") {
+        let now = new Date();
+        let entry = {
+          text: text,
+          time: now.toLocaleString()
+        };
+        let history = JSON.parse(localStorage.getItem("diaryHistory")) || [];
+        history.push(entry);
+        localStorage.setItem("diaryHistory", JSON.stringify(history));
+        document.getElementById("diaryText").value = "";
+        loadHistory();
+        alert("Entry saved!");
+      }
+    }
+
+    function loadHistory() {
+      let history = JSON.parse(localStorage.getItem("diaryHistory")) || [];
+      let historyDiv = document.getElementById("history");
+      historyDiv.innerHTML = "<h3>Diary History</h3>";
+      history.forEach(entry => {
+        historyDiv.innerHTML += `<div class="entry"><b>${entry.time}</b><br>${entry.text}</div>`;
+      });
+    }
+  </script>
+</body>
+</html>
